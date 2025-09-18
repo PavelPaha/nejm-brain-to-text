@@ -7,3 +7,8 @@
 
 # ignore ds_store files
 .DS_Store
+
+# ignore large model files
+model_training/trained_models/
+*.pkl
+*.checkpoint

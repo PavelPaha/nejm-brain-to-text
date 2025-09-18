@@ -54,13 +54,28 @@ class GRUDecoder(nn.Module):
             [nn.Parameter(torch.zeros(1, self.neural_dim)) for _ in range(self.n_days)]
         )
 
+        # Add convolutional layer for patch processing if patch_size > 0
+        if self.patch_size > 0:
+            self.conv1d = nn.Conv1d(
+                in_channels=self.neural_dim,
+                out_channels=self.neural_dim,
+                kernel_size=self.patch_size,
+                stride=self.patch_stride,
+                padding=0
+            )
+            # Initialize conv weights to be close to identity for stability
+            # Use smaller scale for more stable training
+            nn.init.xavier_uniform_(self.conv1d.weight, gain=0.1)
+            if self.conv1d.bias is not None:
+                nn.init.zeros_(self.conv1d.bias)
+            
+            # Add layer normalization after convolution to stabilize gradients
+            self.conv_norm = nn.LayerNorm(self.neural_dim)
+
         self.day_layer_dropout = nn.Dropout(input_dropout)
         
+        # With convolution, the input size remains neural_dim (not multiplied by patch_size)
         self.input_size = self.neural_dim
-
-        # If we are using "strided inputs", then the input size of the first recurrent layer will actually be in_size * patch_size
-        if self.patch_size > 0:
-            self.input_size *= self.patch_size
 
         self.gru = nn.GRU(
             input_size = self.input_size,
@@ -102,21 +117,21 @@ class GRUDecoder(nn.Module):
         if self.input_dropout > 0:
             x = self.day_layer_dropout(x)
 
-        # (Optionally) Perform input concat operation
-        if self.patch_size > 0: 
-  
-            x = x.unsqueeze(1)                      # [batches, 1, timesteps, feature_dim]
-            x = x.permute(0, 3, 1, 2)               # [batches, feature_dim, 1, timesteps]
-            
-            # Extract patches using unfold (sliding window)
-            x_unfold = x.unfold(3, self.patch_size, self.patch_stride)  # [batches, feature_dim, 1, num_patches, patch_size]
-            
-            # Remove dummy height dimension and rearrange dimensions
-            x_unfold = x_unfold.squeeze(2)           # [batches, feature_dum, num_patches, patch_size]
-            x_unfold = x_unfold.permute(0, 2, 3, 1)  # [batches, num_patches, patch_size, feature_dim]
 
-            # Flatten last two dimensions (patch_size and features)
-            x = x_unfold.reshape(x.size(0), x_unfold.size(1), -1) 
+        batch_size, timesteps, feature_dim = x.size()
+        # (Optionally) Perform input concat operation using convolution
+        if self.patch_size > 0: 
+            # Transpose to [batch_size, feature_dim, timesteps] for Conv1d
+            x = x.permute(0, 2, 1)  # [batch_size, feature_dim, timesteps]
+            
+            # Apply 1D convolution to extract patches
+            x = self.conv1d(x)  # [batch_size, feature_dim, num_patches]
+            
+            # Transpose back to [batch_size, num_patches, feature_dim] for LayerNorm and RNN
+            x = x.permute(0, 2, 1)  # [batch_size, num_patches, feature_dim]
+            
+            # Apply layer normalization to stabilize gradients
+            x = self.conv_norm(x) 
         
         # Determine initial hidden states
         if states is None:

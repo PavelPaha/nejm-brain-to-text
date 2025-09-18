@@ -194,6 +194,9 @@ class BrainToTextDataset(Dataset):
             for d in days:
 
                 # Trials are sampled with replacement, so if a day has less than (self.batch_size / days_per_batch trials) trials, it won't be a problem
+                # print(self.trial_indicies)
+                # print(len(self.trial_indicies))
+                # print(self.trial_indicies[d]['trials'])
                 trial_idxs = np.random.choice(self.trial_indicies[d]['trials'], size = num_trials, replace = True)
                 batch[d] = trial_idxs
 

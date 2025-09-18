@@ -11,6 +11,7 @@ import logging
 import sys
 import json
 import pickle
+from tqdm import tqdm
 
 from dataset import BrainToTextDataset, train_test_split_indicies
 from data_augmentations import gauss_smooth
@@ -57,11 +58,11 @@ class BrainToTextDecoder_Trainer:
 
         # Create output directory
         if args['mode'] == 'train':
-            os.makedirs(self.args['output_dir'], exist_ok=False)
+            os.makedirs(self.args['output_dir'], exist_ok=True)
 
         # Create checkpoint directory
         if args['save_best_checkpoint'] or args['save_all_val_steps'] or args['save_final_model']: 
-            os.makedirs(self.args['checkpoint_dir'], exist_ok=False)
+            os.makedirs(self.args['checkpoint_dir'], exist_ok=True)
 
         # Set up logging
         self.logger = logging.getLogger(__name__)
@@ -508,7 +509,7 @@ class BrainToTextDecoder_Trainer:
         train_start_time = time.time()
 
         # train for specified number of batches
-        for i, batch in enumerate(self.train_loader):
+        for i, batch in tqdm(enumerate(self.train_loader), total=len(self.train_loader), desc="Training"):
             
             self.model.train()
             self.optimizer.zero_grad()

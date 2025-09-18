@@ -1,23 +1,23 @@
 #!/bin/bash
 
 # Ensure conda is available
-source "$(conda info --base)/etc/profile.d/conda.sh"
+# source "$(conda info --base)/etc/profile.d/conda.sh"
 
 # Create conda environment with Python 3.10
-conda create -n b2txt25 python=3.10 -y
+# conda create -n b2txt25 python=3.10 -y
 
 # Activate the new environment
-conda activate b2txt25
+# conda activate b2txt25
 
 # Upgrade pip
-pip install --upgrade pip
+# pip install --upgrade pip
 
 # Install PyTorch with CUDA 12.6
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
+uv add torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
 
 # Install additional packages
 # TODO: remove redis
-pip install \
+uv add \
     redis==5.2.1 \
     jupyter==1.1.1 \
     numpy==2.1.2 \
@@ -30,7 +30,6 @@ pip install \
     h5py==3.13.0 \
     omegaconf==2.3.0 \
     editdistance==0.8.1 \
-    -e . \
     huggingface-hub==0.33.1 \
     transformers==4.53.0 \
     tokenizers==0.21.2 \
